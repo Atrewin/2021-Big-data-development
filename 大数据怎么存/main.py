@@ -1,8 +1,8 @@
 
-
 #TODO 构建链接
 import os
-import time, datetime
+import shutil
+import time, datetime, threading, json
 from boto3.session import Session
 import  boto3
 import  hashlib
@@ -13,7 +13,6 @@ url = "http://scut.depts.bingosoft.net:29997"
 
 session  = Session(access_key, secret_key)
 s3_client = session.client("s3", endpoint_url=url )
-
 # TODO 下载文件
 
 class Downloader:
@@ -39,25 +38,138 @@ class Downloader:
             # if not cfilePath[-1] in ["/", "\\"]:
             if cfilePath[-1] in ["/", "\\"]:
                 if not os.path.exists(cfilePath):
-                    os.mkdir(cfilePath)  # 调用系统命令来创建文件
+                    os.makedirs(cfilePath)  # 调用系统命令来创建文件
             else:
+
                 # 判断本地文件情况
                 if not os.path.exists(cfilePath):
-                    with open(cfilePath, 'wb') as f:
-                        file_object = s3_client.get_object(Bucket=bucket_name, Key=obj["Key"])
-                        f.write(file_object['Body'].read())
-                        print("download ", obj["Key"], " from ", bucket_name)
+                    self.download_file(obj["Key"], cfilePath)
                 else:
                     # 对比文件信息, 选择保存
-                    file_object_metadata = s3_client.head_object(Bucket=bucket_name, Key=obj["Key"])
-
                     c_mtime = os.path.getmtime(cfilePath)
+                    file_object_metadata = s3_client.head_object(Bucket=bucket_name, Key=obj["Key"])
                     s_mtime = time.mktime(file_object_metadata["LastModified"].timetuple())
                     if s_mtime > c_mtime:
-                        with open(cfilePath, 'wb') as f:
-                            file_object = s3_client.get_object(Bucket=bucket_name, Key=obj["Key"])
-                            f.write(file_object['Body'].read())
-                            print("update ", cfilePath, " with ", bucket_name, " file")
+                        #执行不同的下载策略
+                        self.download_file(obj["Key"], cfilePath)
+                        print("update ", cfilePath, " with ", bucket_name, " file")
+
+    def download_file(self,s_url, c_url):
+        file_size = self.get_file_size(s_url)
+
+        if file_size > self.startusemultpartsize:
+            self.multipartdownload(c_url,s_url)
+        else:
+            file_object = s3_client.get_object(Bucket=self.bucket_name, Key=s_url)
+            with open(c_url, 'wb') as f:
+                f.write(file_object['Body'].read())
+                print("download ", s_url, " from ", self.bucket_name)
+
+        pass
+
+
+
+    def multipartdownload(self, cfilePath, s_url):
+        # 新建一个缓存文件夹 并生成一个summary文件
+        tempdir = ".".join(s_url.split(".")[0:-1])
+        cache_path = os.path.join("caches", tempdir)
+
+        if not os.path.exists(cache_path):
+            os.makedirs(cache_path)
+
+        # 获取元数据文件
+        file_object_metadata = s3_client.head_object(Bucket=self.bucket_name, Key=s_url)
+        content_length = file_object_metadata["ContentLength"]
+
+        # 存储summary
+        summary = []
+        PartNumber = 1
+        while content_length > 0:
+            ContentLength = min(content_length, self.part_size)
+            part = {
+                "PartNumber": PartNumber,
+                "ContentLength": ContentLength,
+                "start_position" : (PartNumber - 1) * self.part_size,
+                "end_position": (PartNumber - 1) * self.part_size + ContentLength
+            }
+            PartNumber +=1
+            content_length -= self.part_size
+            summary.append(part)
+            pass
+
+        json_url = os.path.join(cache_path,"summary.json")
+        with open(json_url, "w", encoding="utf-8", newline='\n') as json_file:
+            json.dump(summary, json_file, separators=[',', ': '], indent=4, ensure_ascii=False)
+
+        # 多线程下载
+        threads = []
+        print("start multi thread download files")
+        for part in range(len(summary)):
+            t = threading.Thread(self.download_part, args=(summary, part, cache_path, s_url))
+            threads.append(t)
+            t.start()
+
+            pass
+
+        for t in threads:
+            t.join()
+        self.marge_multipart(cache_path, cfilePath)
+
+        print("finished download ", s_url)
+        pass
+
+
+    def marge_multipart(self, cache_path, cpath):
+
+        summary_path = os.path.join(cache_path,"summary.json")
+        with open(summary_path, "r", encoding="utf-8") as json_file:
+            summary = json.load(json_file)
+
+        for part in summary:
+            # 判断这个part是否下载成功
+            temp_url = os.path.join(cache_path, str(part["PartNumber"]))
+
+            #check part
+            if not os.path.exists(temp_url) or os.path.getsize(temp_url) <= 0:
+                return "error"
+            pass
+
+        # 全部到齐，进行合并
+        with open(cpath, 'wb') as total_f:
+
+            try:
+                for part in summary:
+                    temp_url = os.path.join(cache_path, str(part["PartNumber"]))
+                    with open(temp_url, 'rb') as f:
+                        temp_bytes = f.read(part["ContentLength"])
+                    total_f.write(temp_bytes)
+            except:
+                print("error")
+
+            # 删除缓存文件
+            shutil.rmtree(cache_path)
+            pass
+
+    def get_file_size(self, s_url):
+        file_object_metadata = s3_client.head_object(Bucket=self.bucket_name, Key=s_url)
+        content_length = file_object_metadata["ContentLength"]
+
+        filesize = content_length / float(1024 * 1024)
+        return round(filesize, 2)
+    def download_part(self, summary, partNumber, cache_path, s_url):
+
+        Range = "bytes=" + str(summary[partNumber]["start_position"]) + "-" + str(summary[partNumber]["end_position"])
+        resp = s3_client.get_object(Bucket=self.bucket_name, Key=s_url, Range=Range)
+        # 获取临时文件的url
+        keep_url = os.path.join(cache_path, str(partNumber + 1))
+        with open(keep_url, 'wb') as f:
+            f.write(resp['Body'].read())
+
+        print("finished dowmload the ", partNumber, " part")
+
+        pass
+
+
 
 
 
