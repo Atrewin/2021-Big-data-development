@@ -76,6 +76,16 @@ class Downloader:
 
         if not os.path.exists(cache_path):
             os.makedirs(cache_path)
+            print("multi download ", s_url, " ...")
+            self.new_multidownload(cfilePath, s_url, cache_path)
+            print("end download ", s_url, " ...")
+        else:
+            print("recover download ", s_url, " ...")
+            self.recover_downloaded(cfilePath, s_url, cache_path)
+            print("end download ", s_url, " ...")
+        pass
+
+    def new_multidownload(self, cfilePath, s_url, cache_path):
 
         # 获取元数据文件
         file_object_metadata = s3_client.head_object(Bucket=self.bucket_name, Key=s_url)
@@ -89,23 +99,23 @@ class Downloader:
             part = {
                 "PartNumber": PartNumber,
                 "ContentLength": ContentLength,
-                "start_position" : (PartNumber - 1) * self.part_size,
+                "start_position": (PartNumber - 1) * self.part_size,
                 "end_position": (PartNumber - 1) * self.part_size + ContentLength
             }
-            PartNumber +=1
+            PartNumber += 1
             content_length -= self.part_size
             summary.append(part)
             pass
 
-        json_url = os.path.join(cache_path,"summary.json")
+        json_url = os.path.join(cache_path, "summary.json")
         with open(json_url, "w", encoding="utf-8", newline='\n') as json_file:
             json.dump(summary, json_file, separators=[',', ': '], indent=4, ensure_ascii=False)
 
         # 多线程下载
         threads = []
         print("start multi thread download files")
-        for part in range(len(summary)):
-            t = threading.Thread(self.download_part, args=(summary, part, cache_path, s_url))
+        for part in summary:
+            t = threading.Thread(target=self.download_part, args=(part, cache_path, s_url))
             threads.append(t)
             t.start()
 
@@ -116,8 +126,34 @@ class Downloader:
         self.marge_multipart(cache_path, cfilePath)
 
         print("finished download ", s_url)
-        pass
 
+    def recover_downloaded(self, cfilePath, s_url, cache_path):
+
+        try:
+            summary_path = os.path.join(cache_path, "summary.json")
+            with open(summary_path, "r", encoding="utf-8") as json_file:
+                summary = json.load(json_file)
+
+            threads = []
+            for part in summary:
+                # 判断这个part是否下载成功
+                temp_url = os.path.join(cache_path, str(part["PartNumber"]))
+                # check part
+                if not os.path.exists(temp_url) or os.path.getsize(temp_url) <= 0:
+                    t = threading.Thread(target=self.download_part, args=(part, cache_path, s_url))
+                    threads.append(t)
+                    t.start()
+                pass
+
+            for t in threads:
+                t.join()
+
+            self.marge_multipart(cache_path, cfilePath)
+        except:
+            self.new_multidownload(cfilePath,s_url,cache_path)
+
+
+        pass
 
     def marge_multipart(self, cache_path, cpath):
 
@@ -144,7 +180,7 @@ class Downloader:
                         temp_bytes = f.read(part["ContentLength"])
                     total_f.write(temp_bytes)
             except:
-                print("error")
+                print(part, "part error")
 
             # 删除缓存文件
             shutil.rmtree(cache_path)
@@ -156,16 +192,16 @@ class Downloader:
 
         filesize = content_length / float(1024 * 1024)
         return round(filesize, 2)
-    def download_part(self, summary, partNumber, cache_path, s_url):
+    def download_part(self, part, cache_path, s_url):
 
-        Range = "bytes=" + str(summary[partNumber]["start_position"]) + "-" + str(summary[partNumber]["end_position"])
+        Range = "bytes=" + str(part["start_position"]) + "-" + str(part["end_position"])
         resp = s3_client.get_object(Bucket=self.bucket_name, Key=s_url, Range=Range)
         # 获取临时文件的url
-        keep_url = os.path.join(cache_path, str(partNumber + 1))
+        keep_url = os.path.join(cache_path, str(part["PartNumber"]))
         with open(keep_url, 'wb') as f:
             f.write(resp['Body'].read())
 
-        print("finished dowmload the ", partNumber, " part")
+        print("finished dowmload the ", str(part["PartNumber"]), " part")
 
         pass
 
