@@ -7,9 +7,17 @@ from boto3.session import Session
 import  boto3
 import  hashlib
 # Client init
-access_key = "3C792CB222BEAAE59195"
-secret_key = "WzhEMEI2RUVDNDY0MjE0MDM1REQxRjJDNzExODE4"
-url = "http://scut.depts.bingosoft.net:29997"
+
+try:
+    with open("config.txt", "r", encoding="utf-8") as json_file:
+        Congfig = json.load(json_file)
+    access_key = Congfig["access_key"]
+    secret_key = Congfig["secret_key"]
+    url = Congfig["url"]
+except:
+    access_key = "3C792CB222BEAAE59195"
+    secret_key = "WzhEMEI2RUVDNDY0MjE0MDM1REQxRjJDNzExODE4"
+    url = "http://scut.depts.bingosoft.net:29997"
 
 session  = Session(access_key, secret_key)
 s3_client = session.client("s3", endpoint_url=url )
@@ -18,13 +26,12 @@ s3_client = session.client("s3", endpoint_url=url )
 class Downloader:
 
 
-    def __init__(self):
+    def __init__(self,client_root_path=Congfig["client_root"], bucket_name=Congfig["bucket_name"]):
 
-        self.bucket_name = "jinhui"
+        self.bucket_name = bucket_name
         self.part_size = 5 * 1024 * 1024
         self.startusemultpartsize = 4  # MB
-        self.client_store_rootpath = "D:/project/python/workSpace/Course/2021-Big-data-development/大数据怎么存/testdata"
-
+        self.client_store_rootpath = client_root_path
         pass
 
     def downloadfiles(self):
@@ -211,10 +218,10 @@ class Downloader:
 
 
 class Uploader:
-    def __init__(self):
+    def __init__(self,client_root_path=Congfig["client_root"], bucket_name=Congfig["bucket_name"]):
         # self.client_root_path = r"C:\app\eclipse\work-space\testdata"
-        self.client_root_path = "D:/project/python/workSpace/Course/2021-Big-data-development/大数据怎么存/testdata"
-        self.bucket_name = "jinhui"
+        self.client_root_path = client_root_path
+        self.bucket_name = bucket_name
         self.part_size = 5*1024*1024
         self.startusemultpartsize = 4# MB
         pass
@@ -266,7 +273,7 @@ class Uploader:
                 file_object_metadata = s3_client.head_object(Bucket=self.bucket_name, Key=s_file_url)
                 c_mtime = os.path.getmtime(url)
                 s_mtime = time.mktime(file_object_metadata["LastModified"].timetuple())
-                if s_mtime == c_mtime:
+                if s_mtime >= c_mtime:
                     continue
             except:
                 pass
@@ -373,9 +380,14 @@ class Uploader:
                         break
             if error:
                 self.new_multipart_upload(url, s_file_url)
+
+            s3_client.abort_multipart_upload(Bucket=self.bucket_name, Key=s_file_url, UploadId=uploadId)
                 # 已上传完毕,拼接parts
                 # 远端应该是自己会监控,当全部part 到了后会启动合并
             #  未处理问题, 当文件有再次修改后需要怎么处理呢? 如果发现有ETag 不一致,需要全方位重传
+        else:
+            s3_client.abort_multipart_upload(Bucket=self.bucket_name, Key=s_file_url, UploadId=uploadId)
+
 
         pass
     def new_multipart_upload(self, url, s_file_url):
@@ -443,12 +455,47 @@ class Uploader:
 
 
 
-downloader_header = Downloader()
-downloader_header.downloadfiles()
-upload_header = Uploader()
-upload_header.upload_folder()
 
 
+
+
+
+
+
+def main():
+    print_help()
+    downloader_header = Downloader()
+    upload_header = Uploader()
+    while 1:
+        command = input("请输入操作类型(输入help获得指令说明)")
+        print("")
+
+        if command == "help":
+            print_help()
+            continue
+        elif command == "download":
+            downloader_header.downloadfiles()
+            continue
+        elif command == "upload":
+            upload_header.upload_folder()
+            continue
+        elif command == "exit":
+            break
+        else:
+            print("没有该指令，请重新输入！")
+
+
+    #控制逻辑
+
+
+def print_help():
+    print("command        todo")
+    print("upload", ": 本地文件同步到远程")
+    print("download", ": 远程文件同步到本地")
+    print("exit", ": exit")
+
+
+main()
 
 print("#"*9)
 
