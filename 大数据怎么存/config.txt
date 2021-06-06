@@ -1,7 +1,0 @@
-{
-    "ccess_key": "",
-    "secret_key": "",
-    "url": "http://scut.depts.bingosoft.net:29997",
-    "client_root": "D:/project/python/workSpace/Course/2021-Big-data-development/大数据怎么存/testdata",
-    "bucket_name": ""
-}
