@@ -165,10 +165,6 @@ public class Index2 extends Application {
                 UsernameText = loginger.usernameText;
                 PasswordText = loginger.passwordText;
 
-                //debug
-
-
-
 
                 break;
             }
