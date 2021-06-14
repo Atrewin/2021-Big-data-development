@@ -27,7 +27,7 @@ import javax.swing.*;
 
 import static java.sql.DriverManager.getConnection;
 
-public class Index2 extends Application {
+public class Index extends Application {
 
     private static Function sparkhandler = new Function();
     private static String HostText = "";
