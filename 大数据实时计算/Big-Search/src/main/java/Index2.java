@@ -166,12 +166,7 @@ public class Index2 extends Application {
                 PasswordText = loginger.passwordText;
 
                 //debug
-//                "bigdata115.depts.bingosoft.net","22115","user16_db","user16","pass@bingo16"
-                HostText = "bigdata115.depts.bingosoft.net";
-                PortText = "22115";
-                DatabaseText = "user16_db";
-                UsernameText = "user16";
-                PasswordText = "pass@bingo16";
+
 
 
 
