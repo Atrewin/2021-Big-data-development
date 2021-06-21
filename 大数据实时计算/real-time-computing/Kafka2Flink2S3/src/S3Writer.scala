@@ -79,7 +79,7 @@ class S3Writer(accessKey: String, secretKey: String, endpoint: String, bucket: S
         // 重新排序
         fileWriter.write(group(content.toString))
         fileWriter.flush()
-        val targetKey = keyPrefix + System.nanoTime()
+        val targetKey = keyPrefix + filename
         println("开始上传文件：%s 至 %s 桶的 %s 目录下".format(file.getAbsoluteFile, bucket, targetKey))
         amazonS3.putObject(bucket, targetKey, file)
         //        file = null

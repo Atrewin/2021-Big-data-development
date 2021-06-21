@@ -11,20 +11,21 @@ object Main {
 
   //s3地址
   val endpoint = "scuts3.depts.bingosoft.net:29997"
-  //上传到的桶
-  val bucket = "jinhui"
-  //上传文件的路径前缀
-  val keyPrefix = "upload/"
+  //s3原始数据路径
   val key = "buy_ticket_record.txt"
+  //计算经过保存到的桶
+  val bucket = "jinhui"
+  val keyPrefix = "upload/"
+  //上传文件名
+  val filename = "result"+System.nanoTime() + ".txt"
   //上传数据间隔 单位毫秒
   val period = 30000
   //输入的kafka主题名称
   val inputTopic = "mn_buy_ticket_1_jinhui"
-
   //kafka地址
   val bootstrapServers = "bigdata35.depts.bingosoft.net:29035,bigdata36.depts.bingosoft.net:29036,bigdata37.depts.bingosoft.net:29037"
 
-  val filename = "daas"+System.nanoTime() + ".txt"
+
 
   S3Reader.accessKey = accessKey
   S3Reader.secretKey = secretKey
@@ -58,8 +59,6 @@ object Main {
     // Transformation of data in S3Writer Class 订阅模式 inputKafkaStream已经是flink 的数据计算句柄
     // 消费者是直接写入到S3这样的消费
     //transfer
-
-
 
     //sink
     inputKafkaStream.writeUsingOutputFormat(new S3Writer(accessKey, secretKey, endpoint, bucket, keyPrefix, period, filename))

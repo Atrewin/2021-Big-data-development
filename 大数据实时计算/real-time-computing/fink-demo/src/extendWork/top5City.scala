@@ -41,13 +41,13 @@ object top5City {
       .windowAll(TumblingProcessingTimeWindows.of(Time.seconds(10L)))
       .process(new ProcessAllWindowFunction[(String, Long), String, TimeWindow] {
         override def process(context: Context, elements: Iterable[(String, Long)], out: Collector[String]): Unit = {
-          val top3 = elements.toSeq
+          val top5 = elements.toSeq
             .sortBy(-_._2)
             .take(5)
             .zipWithIndex
             .map { case ((dest, times), idx) => s"   ${idx + 1}. $dest: $times" }
             .mkString("\n")
-          out.collect(("-" * 16) + "\n" + top3)
+          out.collect(("-" * 16) + "\n" + top5)
         }
       })
       .print()
