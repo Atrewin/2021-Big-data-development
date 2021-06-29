@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="5b943741-062e-4e1a-a700-19e826fba1b1" name="bingo">
+        <fileTransfer rootFolder="/home/user16" accessType="SFTP" host="bigdata39.depts.bingosoft.net" port="29247" sshConfigId="71357ac1-d278-4a5b-940f-d8da2072fa71" sshConfig="user16@bigdata39.depts.bingosoft.net:29247 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

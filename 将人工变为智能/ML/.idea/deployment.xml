@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="bingo" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="bingo">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/s3data/practice/course" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="cike@222.201.187.236:2035 password">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="user16@bigdata39.depts.bingosoft.net:29247 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/user16/s3data/practice/course" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>
